@@ -1,0 +1,18 @@
+g_dECrit 9.641
+g_dExISpread 0
+g_dExIMax 7.8174
+g_dPlotSpMax 10
+g_nReal 1
+g_nExIMean 1
+g_nEvent 100000
+g_nDRTSC 4
+g_bIsEvenA 1
+g_nDRTSC 4
+g_anDRTSC 1 4 6 15 
+g_nPopLvl 6
+g_anPopLvl 13 8 14 10 6 11 
+g_nDisLvlMax 4
+g_adDisSp 0 2 0 3 
+g_anDisPar 1 1 1 0 
+g_adDisEne 0 4.43891 7.6542 9.641 
+g_adExIMean 0 
