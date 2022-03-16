@@ -209,7 +209,7 @@ const int g_nEvUpdate = 1e2; // print progress to screen at this interval
 
 #ifdef bExSingle // similar to (n,g)
 const double g_dExIMax = 7.8174; // MeV, Ei - "capture state energy"
-const double g_dSpI    = 3.0; // hbar, Ji - "capture state spin"
+const double g_dSpI    = 10.0; // hbar, Ji - "capture state spin"
 const double g_dParI   = 0; // Pi - "capture state parity" 0=(-), 1=(+)
 #endif
 
@@ -236,7 +236,6 @@ const double g_dExRes = 0.2; // excitation resolution on g_ah2ExEg for analysis
 //#define bJIUnderlying // initial population = intrinsic J dist of the nucleus
 //#define bJIPoisson
 //#define bJIGaus
-#define bJSelect // stefano
 
 #ifdef bJIPoisson
 const double g_dJIMean = 3.5;
@@ -244,9 +243,6 @@ const double g_dJIMean = 3.5;
 #ifdef bJIGaus
 const double g_dJIMean = 3.5;
 const double g_dJIWid = 0.5;
-#endif
-#ifdef bJSelect
-const double g_dJiMean = 6;
 #endif
 #endif
 
@@ -1589,9 +1585,6 @@ void GetExI(int &nExI, int &nSpbI, int &nParI, int &nDisEx, int &nLvlInBinI,
     nSpbI = ranEv.Gaus(g_dJIMean,g_dJIWid);
     if(nSpbI<0) nSpbI = 0; // positive gaussian
     #endif
-    #ifdef bJSelect
-    nSpbI = g_dJIMean;
-    #endif
 
     int nAttempt = 0;
     int nMaxAttempt = 1000;
@@ -1765,11 +1758,16 @@ void RAINIER(int g_nRunNum = 1) {
   double initialE;
   double deltaJ[MAX_MULT];  //angular momentum
   double deltaE[MAX_MULT];
+  int multiPol[MAX_MULT];   //multipolarity of gamma-ray
+  double field[MAX_MULT];   //multipolarity (mixing) of gamma-ray (E=1, M=2, mixing=1-2)
+  int type[MAX_MULT];       //what type of transition (c-c=1, c-d=2, d-d=4, d-c=3)
   events->Branch("gammaMult", &gammaMult, "gammaMult/I");
   events->Branch("initialJ", &initialJ, "initialJ/D");
   events->Branch("initialE", &initialE, "initialE/D");
   events->Branch("deltaJ", deltaJ, "deltaJ[gammaMult]/D");
   events->Branch("deltaE", deltaE, "deltaE[gammaMult]/D");
+  events->Branch("multiPol", multiPol, "multiPol[gammaMult]/I");
+  events->Branch("field", field, "field[gammaMult]/D");
   events->SetMaxTreeSize(1000000000LL);
 
 

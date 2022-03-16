@@ -1,4 +1,4 @@
-g_dECrit 9.641
+g_dECrit 2.3219
 g_dExISpread 0
 g_dExIMax 7.8174
 g_dPlotSpMax 10
@@ -11,8 +11,8 @@ g_nDRTSC 4
 g_anDRTSC 1 4 6 15 
 g_nPopLvl 6
 g_anPopLvl 13 8 14 10 6 11 
-g_nDisLvlMax 4
-g_adDisSp 0 2 0 3 
-g_anDisPar 1 1 1 0 
-g_adDisEne 0 4.43891 7.6542 9.641 
+g_nDisLvlMax 16
+g_adDisSp 0 2 4 3 2 6 2 0 5 4 3 1 4 6 4 2 
+g_anDisPar 1 1 1 0 1 1 1 1 0 1 1 0 0 1 1 1 
+g_adDisEne 0 0.696561 1.31467 1.51087 1.56092 1.79146 2.07291 2.08468 2.09328 2.10979 2.17897 2.18575 2.2048 2.21831 2.29541 2.3219 
 g_adExIMean 0 
