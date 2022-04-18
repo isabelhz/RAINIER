@@ -36,9 +36,9 @@
 
 ////////////////////// Discrete Settings ///////////////////////////////////////
 //#define bPrintLvl // print both discrete and constructed lvl schemes
-const int g_nZ = 60; // proton number (60)
+const int g_nZ = 56; // proton number (60)
 const int g_nAMass = 144; // proton + neutron number (144)
-const int g_nDisLvlMax = 16; // only trust level scheme to here, sets ECrit (16)
+const int g_nDisLvlMax = 4; // only trust level scheme to here, sets ECrit (16)
 
 ///////////////////// Constructed Level Scheme Settings ////////////////////////
 ///// Bins /////
@@ -197,7 +197,7 @@ const double g_dICCMax = 1.0; // MeV; Uses last Ebin ICC value for higher E
 
 ////////////////////// Run Settings ////////////////////////////////////////////
 const int g_nReal = 1; // number of realizations of nuclear level scheme
-const int g_nEvent = 1e5; // number of events per realization (and ExI in bExSpread)
+const int g_nEvent = 5e3; // number of events per realization (and ExI in bExSpread)
 const int g_nEvUpdate = 1e2; // print progress to screen at this interval
 
 ////////////////////// Excitation Settings /////////////////////////////////////
@@ -207,11 +207,14 @@ const int g_nEvUpdate = 1e2; // print progress to screen at this interval
 //#define bExSpread  // ejectile detected input
 //#define bExFullRxn // no ejectile detected input
 
-#ifdef bExSingle // similar to (n,g)
-const double g_dExIMax = 7.8174; // MeV, Ei - "capture state energy"
-const double g_dSpI    = 10.0; // hbar, Ji - "capture state spin"
-const double g_dParI   = 0; // Pi - "capture state parity" 0=(-), 1=(+)
+#ifdef bExSingle
+#include "initialState.h"
 #endif
+// #ifdef bExSingle // similar to (n,g)
+// const double g_dExIMax = 6; // MeV, Ei - "capture state energy"
+// const double g_dSpI    = 10.0; // hbar, Ji - "capture state spin"
+// const double g_dParI   = 0; // Pi - "capture state parity" 0=(-), 1=(+)
+// #endif
 
 #ifdef bExSelect // similar to Beta decay
 const double g_adExI[] = {0, 0.88489, 1.78662, 2.69324, 2.89503, 3.0383, 3.3418,
@@ -342,7 +345,7 @@ const double g_dExRes = 0.0; // unused in single
 const double g_adExIMean[] = {0.0}; // unsed in full rxn
 const double g_dExISpread = 0.0; // unsed in full rxn
 #endif
-const int g_nExIMean = sizeof(g_adExIMean) / sizeof(double); // self adjusting
+const int g_nExIMean = sizeof(g_adExIMean) / sizeof(double); // self adjusting (size of double array)
 #ifndef bGSF_Table
 const int g_nParE1   = sizeof(g_adSigE1)   / sizeof(double);
 const int g_nParM1   = sizeof(g_adSigM1)   / sizeof(double);
@@ -1457,7 +1460,9 @@ bool TakeStep(int &nConEx, int &nSpb, int &nPar, int &nDisEx, int &nLvlInBin,
         } // possible
       } // par
     } // sp bin
+
   } ///// in constructed scheme /////
+
   else { /////// in discrete ///////
     nToConEx = -1;
     double dRanBR = ranEv.Uniform(1.0); // should all add up to 1
@@ -1735,7 +1740,8 @@ TGraph *g_grTotWidAvg       [g_nExIMean];
 /******************************************************************************/
 /**************************** MAIN LOOP ***************************************/
 /******************************************************************************/
-void RAINIER(int g_nRunNum = 1) {
+void RAINIER(int g_nRunNum = 1, double iE = 0, double iJ = 0) {
+  cout << iE << " " << iJ << "\n";
   cout << "Starting RAINIER" << endl;
   TTimeStamp tBegin;
   TString sSaveFile = TString::Format("Run%04d.root",g_nRunNum);
@@ -1756,18 +1762,26 @@ void RAINIER(int g_nRunNum = 1) {
   int gammaMult;
   double initialJ;
   double initialE;
-  double deltaJ[MAX_MULT];  //angular momentum
-  double deltaE[MAX_MULT];
-  int multiPol[MAX_MULT];   //multipolarity of gamma-ray
-  double field[MAX_MULT];   //multipolarity (mixing) of gamma-ray (E=1, M=2, mixing=1-2)
-  int type[MAX_MULT];       //what type of transition (c-c=1, c-d=2, d-d=4, d-c=3)
+  double deltaJ[MAX_MULT] = {0};  //angular momentum
+  double deltaE[MAX_MULT] = {0};
+  double multiPol[MAX_MULT] = {0};   //multipolarity of gamma-ray
+  double field[MAX_MULT] = {0};   //multipolarity (mixing) of gamma-ray (E=1, M=2, mixing=1-2)
+  int type[MAX_MULT] = {0};       //what type of transition (c-c=1, c-d=2, d-d=4, d-c=3)
+  double jI[MAX_MULT] = {0};
+  double jF[MAX_MULT] = {0};
+  double eI[MAX_MULT] = {0};
+  double eF[MAX_MULT] = {0};
   events->Branch("gammaMult", &gammaMult, "gammaMult/I");
   events->Branch("initialJ", &initialJ, "initialJ/D");
   events->Branch("initialE", &initialE, "initialE/D");
   events->Branch("deltaJ", deltaJ, "deltaJ[gammaMult]/D");
   events->Branch("deltaE", deltaE, "deltaE[gammaMult]/D");
-  events->Branch("multiPol", multiPol, "multiPol[gammaMult]/I");
+  events->Branch("multiPol", multiPol, "multiPol[gammaMult]/D");
   events->Branch("field", field, "field[gammaMult]/D");
+  events->Branch("jI", jI, "jI[gammaMult]/D");
+  events->Branch("jF", jF, "jF[gammaMult]/D");
+  events->Branch("eI", eI, "eI[gammaMult]/D");
+  events->Branch("eF", eF, "eF[gammaMult]/D");
   events->SetMaxTreeSize(1000000000LL);
 
 
@@ -1913,6 +1927,7 @@ void RAINIER(int g_nRunNum = 1) {
         /////// EVENT LOOP /////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////
         for(int ev=0; ev<g_nEvent; ev++) {
+          // update event output
           #ifdef bParallel
           nCount++;
           if( !( (nCount * nThreads) % g_nEvUpdate) )
@@ -1932,11 +1947,14 @@ void RAINIER(int g_nRunNum = 1) {
             nLvlInBin = nLvlInBinI; // set initial to working state variables
           g_ahJPop[real][exim]->Fill(nSpbI);
 
+          int iField;
           double dExI;
           if(nConEx < 0) { // in discrete
             dExI = g_adDisEne[nDisEx];
+            //iField = -1;
           } else { // in constructed scheme
             dExI = GetInBinE(real,nExI,nSpbI,nParI,nLvlInBinI);
+            //iField = 1;
           }
           g_ah2PopI[real][exim]->Fill(nSpbI,dExI);
           initialE = dExI;
@@ -1952,8 +1970,15 @@ void RAINIER(int g_nRunNum = 1) {
             // bIsAlive: could get stuck in constructed high spin state and have
               // no dipole or quadrupole decay option: effectively an isomer
 
+            // if(nConEx < 0) {  // discrete
+            //   iField = -1;
+            // }
+            // else {  // continuous
+            //   iField = 1;
+            // }
+
             ///// pre decay /////
-            double dJPre, dExPre, dMixDelta2;
+            double dJPre, dExPre, dMixDelta2; //use these values to track change
             dJPre = nSpb;
             if(nConEx < 0) { // in discrete
               dExPre  = g_adDisEne[nDisEx];
@@ -1969,6 +1994,7 @@ void RAINIER(int g_nRunNum = 1) {
             ///// during decay /////
             int nTransMade = 0; // want to know multipole and character for ICC
             if(nConEx < 0) { ///// in discrete /////
+              iField = -1;
               double dTotWid = 0.0;
               double dLifeT = g_adDisT12[nDisEx] / log(2); // lifetime from file
               double dDecayTime = ranEv.Exp(dLifeT);
@@ -1977,7 +2003,9 @@ void RAINIER(int g_nRunNum = 1) {
                 nConEx, nSpb, nPar, nDisEx, nLvlInBin,
                 nTransMade, dMixDelta2, dTotWid, real,
                 adConWid, adDisWid, arConState, ranEv);
-            } else { ///// in constructed scheme //////
+            }
+            else { ///// in constructed scheme //////
+              iField = 1;
               #ifdef bExSingle
               double dTotWid;
               if(nConEx == g_nConEBin - 1) { // use saved init width
@@ -2024,6 +2052,7 @@ void RAINIER(int g_nRunNum = 1) {
                 adConWid, adDisWid, arConState, ranEv);
               #endif
             } // end of decay
+            //cout << dMixDelta2 << " ";
             nStep++;
 
             ///// post decay /////
@@ -2041,6 +2070,30 @@ void RAINIER(int g_nRunNum = 1) {
               double dEg = dExPre - dExPost;
               deltaE[nStep-1] = dEg;
               deltaJ[nStep-1] = dJPre - nSpb;
+              eI[nStep-1] = dExPre;
+              eF[nStep-1] = dExPost;
+              jI[nStep-1] = dJPre;
+              jF[nStep-1] = nSpb;
+              if(nConEx < 0 && iField < 0)  //discrete to discrete
+                field[nStep-1] = 4;
+              else if(nConEx < 0 && iField >= 0) //continuous to discrete
+                field[nStep-1] = 2;
+              else if(nConEx > 0 && iField >= 0) //continous to continuous
+                field[nStep-1] = 1;
+              else
+                field[nStep-1] = 3;
+              if(nTransMade == 0) //no transition
+                multiPol[nStep-1] = 0;
+              else if(nTransMade == 1) //pure E1
+                multiPol[nStep-1] = 1;
+              else if(nTransMade == 3) //pure M1
+                multiPol[nStep-1] = -1;
+              else if(nTransMade == 4) //pure E2
+                multiPol[nStep-1] = 2;
+              else if(nTransMade == 2) //mixed M1+E2
+                multiPol[nStep-1] = 1.5;
+              else
+                multiPol[nStep-1] = -5; //control
 
               ///// Internal Conversion /////
               double dICC = GetICC(dEg,nTransMade,dMixDelta2);
@@ -2089,9 +2142,10 @@ void RAINIER(int g_nRunNum = 1) {
 
             } // IsAlive
 
-          } // no longer excited
+          } // no longer excited - end of decay to ground state
 
           gammaMult = nStep;
+          //cout << "\n";
           events->Fill();
         } //////////////////////////////////////////////////////////////////////
         ////////////////////////// EVENTS //////////////////////////////////////
